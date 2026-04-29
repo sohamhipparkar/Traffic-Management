@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Traffic Management</title>
+</head>
+<body>
+<h2>Smart Traffic System</h2>
+
+<input id="id" placeholder="Vehicle ID"><br><br>
+<input id="speed" placeholder="Speed"><br><br>
+<input id="zone" placeholder="Zone"><br><br>
+<label>
+    <input type="checkbox" id="emergency"> Emergency
+</label><br><br>
+
+<button onclick="send()">Process</button>
+
+<h3 id="result"></h3>
+
+<script>
+    async function send() {
+        const id = document.getElementById("id").value;
+        const speed = document.getElementById("speed").value;
+        const zone = document.getElementById("zone").value;
+        const emergency = document.getElementById("emergency").checked;
+
+        const url = `/process?id=${id}&speed=${speed}&zone=${zone}&emergency=${emergency}`;
+
+        const res = await fetch(url);
+        const text = await res.text();
+
+        document.getElementById("result").innerText = text;
+    }
+</script>
+</body>
+</html>

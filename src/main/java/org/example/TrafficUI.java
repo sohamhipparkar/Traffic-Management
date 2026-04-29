@@ -3,7 +3,6 @@ package org.example;
 import com.sun.net.httpserver.HttpServer;
 import com.sun.net.httpserver.HttpExchange;
 
-import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.util.*;
@@ -16,7 +15,56 @@ public class TrafficUI {
 
         HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);
 
-        server.createContext("/process", (HttpExchange exchange) -> {
+        // ✅ ROOT UI ROUTE
+        server.createContext("/", exchange -> {
+            String html = """
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <title>Traffic Management</title>
+                    </head>
+                    <body>
+                        <h2>Smart Traffic System</h2>
+
+                        <input id="id" placeholder="Vehicle ID"><br><br>
+                        <input id="speed" placeholder="Speed"><br><br>
+                        <input id="zone" placeholder="Zone"><br><br>
+
+                        <label>
+                            <input type="checkbox" id="emergency"> Emergency
+                        </label><br><br>
+
+                        <button onclick="send()">Process</button>
+
+                        <h3 id="result"></h3>
+
+                        <script>
+                            async function send() {
+                                const id = document.getElementById("id").value;
+                                const speed = document.getElementById("speed").value;
+                                const zone = document.getElementById("zone").value;
+                                const emergency = document.getElementById("emergency").checked;
+
+                                const url = `/process?id=${id}&speed=${speed}&zone=${zone}&emergency=${emergency}`;
+
+                                const res = await fetch(url);
+                                const text = await res.text();
+
+                                document.getElementById("result").innerText = text;
+                            }
+                        </script>
+                    </body>
+                    </html>
+                    """;
+
+            exchange.getResponseHeaders().set("Content-Type", "text/html");
+            exchange.sendResponseHeaders(200, html.length());
+            exchange.getResponseBody().write(html.getBytes());
+            exchange.close();
+        });
+
+        // ✅ PROCESS API (your existing logic)
+        server.createContext("/process", exchange -> {
 
             if ("GET".equals(exchange.getRequestMethod())) {
 
