@@ -1,6 +1,6 @@
 org\example\SmartTrafficSystem$ViolationRecord.class
+org\example\TrafficUI.class
+org\example\SmartTrafficSystem.class
 org\example\SmartTrafficSystem$TrafficRules.class
 org\example\SmartTrafficSystem$VehicleEvent.class
 org\example\DBConnection.class
-org\example\TrafficUI.class
-org\example\SmartTrafficSystem.class
