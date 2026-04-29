@@ -6,9 +6,9 @@ import java.sql.SQLException;
 
 public class DBConnection {
 
-    private static final String URL = "jdbc:mysql://localhost:3306/traffic_management?useSSL=false&serverTimezone=UTC";
-    private static final String USER = "root";         // your MySQL username
-    private static final String PASSWORD = "Soham@123"; // your MySQL password
+    private static final String URL = "jdbc:mysql://sql12.freesqldatabase.com:3306/sql12824781?useSSL=false&serverTimezone=UTC";
+    private static final String USER = "sql12824781";
+    private static final String PASSWORD = "UCHXdhTTxZ"; // your MySQL password
 
     public static Connection getConnection() {
         Connection conn = null;
