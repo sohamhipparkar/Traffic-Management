@@ -1,94 +1,90 @@
 package org.example;
 
-import javax.swing.*;
-import java.awt.GridLayout;
-import java.awt.event.*;
-import java.util.*;
+import com.sun.net.httpserver.HttpServer;
+import com.sun.net.httpserver.HttpExchange;
 
+import java.io.IOException;
+import java.io.OutputStream;
+import java.net.InetSocketAddress;
+import java.util.*;
 
 public class TrafficUI {
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
 
-        JFrame frame = new JFrame("Smart Traffic System");
-        frame.setSize(500, 400);
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        int port = Integer.parseInt(System.getenv().getOrDefault("PORT", "8080"));
 
-        // Layout
-        frame.setLayout(new GridLayout(6, 2));
+        HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);
 
-        JTextField vehicleField = new JTextField();
-        JTextField speedField = new JTextField();
-        JTextField zoneField = new JTextField();
-        JCheckBox emergencyBox = new JCheckBox("Emergency Vehicle");
+        server.createContext("/process", (HttpExchange exchange) -> {
 
-        JTextArea outputArea = new JTextArea();
-        outputArea.setEditable(false);
+            if ("GET".equals(exchange.getRequestMethod())) {
 
-        JButton processBtn = new JButton("Process Event");
+                Map<String, String> params = queryToMap(exchange.getRequestURI().getQuery());
 
-        // Add Components
-        frame.add(new JLabel("Vehicle ID:"));
-        frame.add(vehicleField);
+                try {
+                    String id = params.get("id");
+                    double speed = Double.parseDouble(params.get("speed"));
+                    String zone = params.get("zone");
+                    boolean isEmergency = Boolean.parseBoolean(params.get("emergency"));
 
-        frame.add(new JLabel("Speed:"));
-        frame.add(speedField);
+                    SmartTrafficSystem.VehicleEvent event =
+                            new SmartTrafficSystem.VehicleEvent(
+                                    id, speed, zone, isEmergency,
+                                    System.currentTimeMillis()
+                            );
 
-        frame.add(new JLabel("Zone:"));
-        frame.add(zoneField);
+                    List<SmartTrafficSystem.VehicleEvent> events = Arrays.asList(event);
 
-        frame.add(emergencyBox);
-        frame.add(new JLabel(""));
+                    List<SmartTrafficSystem.ViolationRecord> violations =
+                            events.stream()
+                                    .filter(SmartTrafficSystem.TrafficRules.violationFilter)
+                                    .map(ev -> new SmartTrafficSystem.ViolationRecord(
+                                            ev.vehicleId,
+                                            ev.speed,
+                                            ev.zone,
+                                            SmartTrafficSystem.fineCalculator.apply(ev.speed)
+                                    ))
+                                    .toList();
 
-        frame.add(processBtn);
+                    String response;
 
-        frame.add(new JScrollPane(outputArea));
+                    if (violations.isEmpty()) {
+                        response = "No violation detected";
+                    } else {
+                        SmartTrafficSystem.ViolationRecord v = violations.get(0);
+                        SmartTrafficSystem.saveViolation(v);
+                        response = "Violation: " + v.toString();
+                    }
 
-        // Button Logic
-        processBtn.addActionListener(e -> {
-            try {
-                String id = vehicleField.getText();
-                double speed = Double.parseDouble(speedField.getText());
-                String zone = zoneField.getText();
-                boolean isEmergency = emergencyBox.isSelected();
+                    exchange.sendResponseHeaders(200, response.length());
+                    OutputStream os = exchange.getResponseBody();
+                    os.write(response.getBytes());
+                    os.close();
 
-                SmartTrafficSystem.VehicleEvent event =
-                        new SmartTrafficSystem.VehicleEvent(
-                                id, speed, zone, isEmergency,
-                                System.currentTimeMillis()
-                        );
-
-                List<SmartTrafficSystem.VehicleEvent> events =
-                        Arrays.asList(event);
-
-                List<SmartTrafficSystem.ViolationRecord> violations =
-                        events.stream()
-                                .filter(SmartTrafficSystem.TrafficRules.violationFilter)
-                                .map(ev -> new SmartTrafficSystem.ViolationRecord(
-                                        ev.vehicleId,
-                                        ev.speed,
-                                        ev.zone,
-                                        SmartTrafficSystem.fineCalculator.apply(ev.speed)
-                                ))
-                                .toList();
-
-                if (violations.isEmpty()) {
-                    outputArea.setText("No violation detected.");
-                } else {
-                    SmartTrafficSystem.ViolationRecord v = violations.get(0);
-                    outputArea.setText(v.toString());
-
-                    // SAVE TO DATABASE
-                    SmartTrafficSystem.saveViolation(v);
-                    outputArea.append("\n✅ Saved to database!");
+                } catch (Exception ex) {
+                    String response = "Invalid input";
+                    exchange.sendResponseHeaders(400, response.length());
+                    exchange.getResponseBody().write(response.getBytes());
+                    exchange.close();
                 }
-
-            } catch (Exception ex) {
-                outputArea.setText("Invalid input!");
             }
         });
 
-        frame.setVisible(true);
+        server.start();
+        System.out.println("Server running on port " + port);
+    }
+
+    private static Map<String, String> queryToMap(String query) {
+        Map<String, String> result = new HashMap<>();
+        if (query == null) return result;
+
+        for (String param : query.split("&")) {
+            String[] pair = param.split("=");
+            if (pair.length > 1) {
+                result.put(pair[0], pair[1]);
+            }
+        }
+        return result;
     }
 }
-
